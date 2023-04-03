@@ -70,6 +70,8 @@ public:
     Matrix<T>& operator+(Matrix<T>& other);
     Matrix<T>& operator-(Matrix<T>& other);
     Matrix<T>& operator*(Matrix<T>& other);
+    Matrix<T>& transpone(Matrix<T>& other);
+    Matrix<T>& ortogonal(Matrix<T>& other);
 
     friend std::ostream& operator<<(std::ostream& os, Matrix<T>& matrix)
     {
@@ -88,6 +90,12 @@ private:
     size_t rows_;
     size_t cols_;
     T** data_;
+};
+
+template <typename T>
+class Matrix2D :public Matrix<T>
+{
+
 };
 
 
@@ -221,7 +229,9 @@ Matrix<T>& Matrix<T>::operator-(Matrix<T>& other)
 template <typename T>
 Matrix<T>& Matrix<T>::operator*(Matrix<T>& other)
 {
-    if (cols_ != other.rows_) {
+    if (cols_ != other.rows_) 
+    {
+        std::cerr << "Matrices have different dimensions" << std::endl;
         throw std::invalid_argument("Matrices are not compatible for multiplication");
     }
     Matrix<T>* result = new Matrix<T>(rows_, other.cols_,0);
