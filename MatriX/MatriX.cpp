@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include <exception>
 
 template <typename T>
@@ -58,7 +58,7 @@ class Matrix: public AbstractMatrix<T>
 {
 public:
     Matrix(size_t rows = 1, size_t cols = 1, const T value = 1);
-    Matrix(size_t rows, size_t cols, const T** arr);
+    Matrix(size_t rows, size_t cols, T** arr);
     Matrix(const Matrix<T>& other);
     ~Matrix();
 
@@ -70,8 +70,8 @@ public:
     Matrix<T>& operator+(Matrix<T>& other);
     Matrix<T>& operator-(Matrix<T>& other);
     Matrix<T>& operator*(Matrix<T>& other);
-    Matrix<T>& transpone(Matrix<T>& other);
     Matrix<T>& ortogonal(Matrix<T>& other);
+    Matrix<T>& transpose();
 
     friend std::ostream& operator<<(std::ostream& os, Matrix<T>& matrix)
     {
@@ -93,13 +93,6 @@ private:
 };
 
 template <typename T>
-class Matrix2D :public Matrix<T>
-{
-
-};
-
-
-template <typename T>
 Matrix<T>::Matrix(size_t rows, size_t cols,const T value):rows_(rows), cols_(cols), data_(Allocator<T>::allocate(rows_,cols_))
 {
     for (size_t i = 0; i < rows_; i++)
@@ -112,7 +105,7 @@ Matrix<T>::Matrix(size_t rows, size_t cols,const T value):rows_(rows), cols_(col
 }
 
 template <typename T>
-Matrix<T>::Matrix(size_t rows, size_t cols, const T** arr):rows_(rows), cols_(cols), data_(Allocator<T>::allocate(rows_,cols_))
+Matrix<T>::Matrix(size_t rows, size_t cols, T** arr):rows_(rows), cols_(cols), data_(Allocator<T>::allocate(rows_,cols_))
 {
 
     if (arr == nullptr)
@@ -250,6 +243,48 @@ Matrix<T>& Matrix<T>::operator*(Matrix<T>& other)
     return *result;
 }
 
+template <typename T>
+Matrix<T>& Matrix<T>::transpose() 
+{
+    Matrix<T>* result =  new Matrix<T>(cols_, rows_); // создаем новую матрицу размера m_cols x m_rows
+    for (int i = 0; i < rows_; i++) 
+    {
+        for (int j = 0; j < cols_; j++)
+        {
+            result->data_[j][i] = (*this)(i, j); 
+        }
+    }
+    return *result;
+}
+
+template <typename T>
+class Matrix2D :public Matrix<T>
+{
+public:
+    Matrix2D(size_t size, const T value = 1) :Matrix<T>(size, size,value) {}
+    Matrix2D(size_t size, T** arr) :Matrix<T>(size, size, arr){}
+    using Matrix<T>::operator=;
+
+    double determinant();
+
+    bool isSquare() 
+    {
+        return (this->getCols() == this->getRows());
+    }
+
+};
+
+template <typename T>
+double Matrix2D<T>::determinant()
+{
+
+}
+
+template <typename T>
+class InvertibleMatrix : public Matrix2D<T>
+{
+
+};
 
 int main()
 {
@@ -260,19 +295,29 @@ int main()
         arr[i] = new int[N];
         for (size_t j = 0; j < N; j++)
         {
-            arr[i][j] = 45;
+            arr[i][j] = rand()%20;
         }
     }
 
     Matrix<int> B(3,3,5);
     Matrix<int> D(3,3);
-    Matrix<int> C(B);
+    Matrix<int> C(N,N,arr);
     B = D;
     B = D - C;
     B = D * C;
     std::cout << D;
     std::cout << C;
-    std::cout << B;
-    
+
+    C = C.transpose();
+
+    std::cout << C;
+
+    int a = 5;
+
+    Matrix2D<int> H(a,3);
+    Matrix2D<int> M(a);
+
+
+
     return 0;
 }
