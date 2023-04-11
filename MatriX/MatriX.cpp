@@ -1,5 +1,6 @@
 ﻿#include <iostream>
 #include <exception>
+#include <cmath>
 
 template <typename T>
 class Allocator
@@ -73,6 +74,70 @@ public:
     Matrix<T>& ortogonal(Matrix<T>& other);
     Matrix<T>& transpose();
 
+    double norm(float* vec) {
+        double sum = 0;
+        for (int i = 0; i < rows_; i++) {
+            sum += vec[i] * vec[i];
+        }
+        return sqrt(sum);
+    }
+
+    // метод для умножения матрицы на вектор
+    void mult(float* vec, float* result) {
+        for (int i = 0; i < rows_; i++) {
+            result[i] = 0;
+            for (int j = 0; j < cols_; j++) {
+                result[i] += data_[i][j] * vec[j];
+            }
+        }
+    }
+
+// метод вычисления собственного значения методом степенных итераций
+float powerIteration(float* vec, double tol, int maxIter)
+{
+    float lambda, lambdaPrev = 0;
+    float* vecPrev = new float[rows_];
+    float* vecNext = new float[rows_];
+
+    // инициализация вектора
+    for (int i = 0; i < rows_; i++) 
+    {
+        vec[i] = 1;
+    }
+
+    for (int iter = 0; iter < maxIter; iter++) 
+    {    
+        // умножение матрицы на вектор
+        mult(vec, vecNext);
+
+        // вычисление собственного значения
+        lambda = vecNext[0] / vec[0];
+
+        // нормирование вектора
+        float normNext = norm(vecNext);
+        for (int i = 0; i < rows_; i++) 
+        {
+            vec[i] = vecNext[i] / normNext;   
+        }
+
+        // проверка на сходимость        
+        if (fabs(lambda - lambdaPrev) < tol) 
+        {
+            break;
+        }
+
+        // сохранение текущего вектора и собственного значения
+        lambdaPrev = lambda;
+        for (int i = 0; i < rows_; i++) 
+        {
+            vecPrev[i] = vec[i];    
+        }
+
+    }
+    delete[] vecPrev;
+    delete[] vecNext;
+    return lambdaPrev;
+}
 
 
     friend std::ostream& operator<<(std::ostream& os, Matrix<T>& matrix)
@@ -428,7 +493,16 @@ int main()
     B = D - C;
     B = D * C;
     std::cout << D;
+
+    float* arr3 = new float[N];
+    for (size_t i = 0; i < N; i++)
+    {
+        arr3[i] = 1;
+    }
+
+    double eps = 1e-8;
     std::cout << C;
+    std::cout << C.powerIteration(arr3,eps,1000) << std::endl;
 
     C = C.transpose();
 
@@ -457,6 +531,8 @@ int main()
     InvertibleMatrix I(N,arr2);
     std::cout << I << std::endl;
     I.invers();
+
+
 
     return 0;
 }
