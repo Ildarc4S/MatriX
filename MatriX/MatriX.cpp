@@ -307,6 +307,14 @@ Matrix2D<T> Matrix2D<T>::toUpperTriangular()
             }
         }
     }
+    for (size_t i = 0; i < result.rows_; i++)
+    {
+        for (size_t j = 0; j < result.cols_; j++)
+        {
+            std::cout << result.data_[i][j] << " ";
+        }
+        std::cout << "\n";
+    }
     return result;
 }
 
@@ -336,8 +344,69 @@ void Matrix2D<T>::swapRows(int row1, int row2) {
 template <typename T>
 class InvertibleMatrix : public Matrix2D<T>
 {
+public:
+    InvertibleMatrix(size_t size, const T value = 1) :Matrix2D<T>(size, value) {}
+    InvertibleMatrix(size_t size, T** arr) :Matrix2D<T>(size,arr) {}
+    using Matrix2D<T>::operator=;
 
+    bool isInvertible() const;
+    
+    void toDiagonal() 
+    {
+        this->toUpperTriangle();
+        for (int i = this->rows_ - 1; i >= 0; --i) {
+            for (int j = i - 1; j >= 0; --j) {
+                double factor = this->data_[j][i] / this->data_[i][i];
+                for (int col = i; col < this->cols_; col++) {
+                    this->data_[j][col] -= factor * this->data_[i][col];
+                }
+            }
+        }
+    }
+
+    void invers()
+    {
+        double det = this->determinant();
+        std::cout << det << std::endl;
+        if (det == 0.0) {
+            std::cerr << "lox";
+            throw std::invalid_argument("Cannot invert matrix with zero determinant");
+        }
+
+        InvertibleMatrix res = *this;
+        res = res.transpose();
+
+        std::cout << "Res\n";
+        for (size_t i = 0; i < this->rows_; i++)
+        {
+            for (size_t j = 0; j < this->cols_; j++)
+            {
+                std::cout << res.data_[i][j] << " ";
+            }
+            std::cout << "\n";
+        }
+
+        for (int i = 0; i < this->rows_; i++) {
+            for (int j = 0; j < this->cols_; j++) {
+                res.data_[i][j] = res.data_[i][j] / det;
+            }
+        }
+        for (size_t i = 0; i < this->rows_; i++)
+        {
+            for (size_t j = 0; j < this->cols_; j++)
+            {
+                std::cout << res.data_[i][j] << " ";
+            }
+            std::cout << "\n";
+        }
+    }
 };
+
+template <typename T>
+bool InvertibleMatrix<T>::isInvertible() const
+{
+    return (this->determinant() != 0);
+}
 
 int main()
 {
@@ -367,12 +436,27 @@ int main()
 
     int a = 2;
 
-    Matrix2D<int> H(a,3);
-    Matrix2D<int> M(a,2);
+    Matrix2D H(a,3);
+    Matrix2D M(N,arr);
+
+    float** arr2 = new float* [N];
+    for (size_t i = 0; i < N; i++)
+    {
+        arr2[i] = new float[N];
+        for (size_t j = 0; j < N; j++)
+        {
+            arr2[i][j] = rand() % 20;
+        }
+    }
+    Matrix2D K(N, arr2);
 
     std::cout << M << std::endl;
     std::cout << M.determinant() << std::endl;
 
+
+    InvertibleMatrix I(N,arr2);
+    std::cout << I << std::endl;
+    I.invers();
 
     return 0;
 }
