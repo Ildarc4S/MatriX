@@ -73,6 +73,8 @@ public:
     Matrix<T>& ortogonal(Matrix<T>& other);
     Matrix<T>& transpose();
 
+
+
     friend std::ostream& operator<<(std::ostream& os, Matrix<T>& matrix)
     {
         for (size_t i = 0; i < matrix.rows_; i++)
@@ -86,7 +88,7 @@ public:
         return os;
     }
 
-private:
+protected:
     size_t rows_;
     size_t cols_;
     T** data_;
@@ -265,19 +267,70 @@ public:
     Matrix2D(size_t size, T** arr) :Matrix<T>(size, size, arr){}
     using Matrix<T>::operator=;
 
+
+    Matrix2D toUpperTriangular();
     double determinant();
-
-    bool isSquare() 
-    {
-        return (this->getCols() == this->getRows());
-    }
-
+    bool isSquare();
+    void swapRows(int row1, int row2);
 };
+
+template <typename T>
+Matrix2D<T> Matrix2D<T>::toUpperTriangular()
+{
+    Matrix2D result = *this;
+    int n = result.getRows();
+    for (int i = 0; i < n; i++)
+    {
+        if (result(i, i) == 0)
+        {
+            bool found_nonzero = false;
+            for (int j = i + 1; j < n; j++)
+            {
+                if (result(j, i) != 0)
+                {
+                    result.swapRows(i, j);
+                    found_nonzero = true;
+                    break;
+                }
+            }
+            if (!found_nonzero)
+            {
+                return result;
+            }
+        }
+        double pivot = result(i, i);
+        for (int j = i + 1; j < n; j++)
+        {
+            double factor = result(j, i) / pivot;
+            for (int col = i; col < result.getCols(); col++) {
+                result.data_[j][col] -= factor * result.data_[i][col];
+            }
+        }
+    }
+    return result;
+}
 
 template <typename T>
 double Matrix2D<T>::determinant()
 {
+    Matrix2D upper_triangular = toUpperTriangular();
+    double det = 1.0;
+    for (int i = 0; i < upper_triangular.getRows(); i++)
+    {
+        det *= upper_triangular(i, i);
+    }
+    return det;
+}
 
+template <typename T>
+bool Matrix2D<T>::isSquare()
+{
+    return (this->getCols() == this->getRows());
+}
+
+template <typename T>
+void Matrix2D<T>::swapRows(int row1, int row2) {
+    std::swap(this->data_[row1], this->data_[row2]);
 }
 
 template <typename T>
@@ -312,11 +365,13 @@ int main()
 
     std::cout << C;
 
-    int a = 5;
+    int a = 2;
 
     Matrix2D<int> H(a,3);
-    Matrix2D<int> M(a);
+    Matrix2D<int> M(a,2);
 
+    std::cout << M << std::endl;
+    std::cout << M.determinant() << std::endl;
 
 
     return 0;
