@@ -2,6 +2,7 @@
 #include <exception>
 #include <cmath>
 
+
 template <typename T>
 class Allocator
 {
@@ -71,6 +72,7 @@ public:
     Matrix<T>& operator+(Matrix<T>& other);
     Matrix<T>& operator-(Matrix<T>& other);
     Matrix<T>& operator*(Matrix<T>& other);
+    Matrix<T>& operator*(T val);
     Matrix<T>& ortogonal(Matrix<T>& other);
     Matrix<T>& transpose();
 
@@ -92,8 +94,8 @@ public:
         }
     }
 
-// метод вычисления собственного значения методом степенных итераций
-float powerIteration(float* vec, double tol, int maxIter)
+    // метод вычисления собственного значения методом степенных итераций
+    float powerIteration(float* vec, double tol, int maxIter)
 {
     float lambda, lambdaPrev = 0;
     float* vecPrev = new float[rows_];
@@ -138,7 +140,6 @@ float powerIteration(float* vec, double tol, int maxIter)
     delete[] vecNext;
     return lambdaPrev;
 }
-
 
     friend std::ostream& operator<<(std::ostream& os, Matrix<T>& matrix)
     {
@@ -205,7 +206,6 @@ template <typename T>
 Matrix<T>::~Matrix()
 {
     Allocator<T>::deallocate(data_, rows_);
-    std::cout << "Memory if free" << std::endl;
 }
 
 template <typename T>
@@ -267,6 +267,20 @@ Matrix<T>& Matrix<T>::operator+(Matrix<T>& other)
 }
 
 template <typename T>
+Matrix<T>& Matrix<T>::operator*(T val)
+{
+    Matrix<T>* result = new Matrix<T>(rows_, cols_);
+    for (size_t i = 0; i < rows_; i++)
+    {
+        for (size_t j = 0; j < cols_; j++)
+        {
+            result->data_[i][j] = data_[i][j]*val;
+        }
+    }
+    return *result;
+}
+
+template <typename T>
 Matrix<T>& Matrix<T>::operator-(Matrix<T>& other)
 {
     if (rows_ != other.rows_ || cols_ != other.cols_)
@@ -294,7 +308,7 @@ Matrix<T>& Matrix<T>::operator*(Matrix<T>& other)
         std::cerr << "Matrices have different dimensions" << std::endl;
         throw std::invalid_argument("Matrices are not compatible for multiplication");
     }
-    Matrix<T>* result = new Matrix<T>(rows_, other.cols_,0);
+    Matrix<T>* result = new Matrix<T>(rows_, other.cols_);
 
     for (int i = 0; i < rows_; i++) 
     {
@@ -302,6 +316,7 @@ Matrix<T>& Matrix<T>::operator*(Matrix<T>& other)
         {
             for (int k = 0; k < cols_; k++) 
             {
+                result->data_[i][j] -= 1;
                 result->data_[i][j] += data_[i][k] * other(k, j);
             }
         }
@@ -332,6 +347,119 @@ public:
     Matrix2D(size_t size, T** arr) :Matrix<T>(size, size, arr){}
     using Matrix<T>::operator=;
 
+    //вычисление коэффицентов показательной функции
+    float* coeffs(Matrix2D A, float tol)
+    {
+        int n = A.rows_;
+        Matrix2D A_k = A;
+        Matrix2D B(n);
+        Matrix2D X(n);
+
+        for (int k = 0; k <= n; k++)
+        {
+            B = A_k * (1.0 / k);
+            for (size_t i = 0; i < B.rows_; i++)
+            {
+                for (size_t j = 0; j < B.cols_; j++)
+                {
+                    if (i == j)
+                    {
+                        B.data_[i][j] -= 1.0;
+                    }
+                }
+            }
+            X = B;
+
+            Matrix2D Y(n);
+            Matrix2D Z(n);
+            for (int i = 0; i < n; i++) 
+            {
+                for (int j = 0; j < n; j++) 
+                {
+                    Y.data_[i][j] = X.data_[i][j];
+                    Z.data_[i][j] = X.data_[i][j];
+                    if (i == j) 
+                    {
+                        Y.data_[i][j] -= 1.0;
+                    }
+                }
+            }
+
+            Matrix2D Y_k = Y;
+            float factor = 1.0;
+            for (int j = 1; j <= n; j++) 
+            {
+                if (j == k) 
+                {
+                    continue;
+                }
+                factor *= (double)(j - k);
+                B = Y_k * (1.0 / factor);
+                for (size_t i = 0; i < B.rows_; i++)
+                {
+                    for (size_t j = 0; j < B.cols_; j++)
+                    {
+                        if (i == j)
+                        {
+                            B.data_[i][j] -= 1;
+                        }
+                    }
+                }
+                X = B;
+                Y_k = Y_k + X;
+            }
+
+            float sum = 0.0;
+            for (int i = 0; i < n; i++) {
+                sum += Y_k.data_[i][i];
+            }
+            if (abs(sum) < tol) {
+                break;
+            }
+            A_k = A_k * Y_k;
+        }
+        float* c = new float[n];
+        for (int i = 0; i < n; i++) 
+        {
+            c[i] = A_k.data_[i][i];
+        }
+        return c;
+    }
+
+    float* solve(Matrix2D A, const float* b, float tol)
+    {
+        int n = A.rows_;
+        Matrix2D C(n);
+        for (size_t i = 0; i < C.rows_; i++)
+        {
+            for (size_t j = 0; j < C.cols_; j++)
+            {
+                C.data_[i][j] = A.data_[i][j];
+                if (i == j)
+                {
+                    C.data_[i][j] -= 1;
+                }
+            }
+        }
+
+        float* c = new float[n];
+        c = coeffs(C, tol);
+        float* x = new float[n];
+        float denom = 0;
+        for (size_t i = 0; i < n; i++)
+        {
+            denom += c[i];
+        }
+
+        for (int i = 0; i < n; i++) {
+            float numer = b[i];
+            for (int j = 0; j < n; j++) {
+                numer += c[j] * A.data_[i][j];
+            }
+            x[i] = numer / denom;
+        }
+        return x;
+    }
 
     Matrix2D toUpperTriangular();
     double determinant();
@@ -412,7 +540,7 @@ class InvertibleMatrix : public Matrix2D<T>
 public:
     InvertibleMatrix(size_t size, const T value = 1) :Matrix2D<T>(size, value) {}
     InvertibleMatrix(size_t size, T** arr) :Matrix2D<T>(size,arr) {}
-    using Matrix2D<T>::operator=;
+    using Matrix<T>::operator=;
 
     bool isInvertible() const;
     
@@ -428,43 +556,52 @@ public:
             }
         }
     }
-
-    void invers()
+    InvertibleMatrix minor(int row, int col)
     {
-        double det = this->determinant();
-        std::cout << det << std::endl;
-        if (det == 0.0) {
-            std::cerr << "lox";
-            throw std::invalid_argument("Cannot invert matrix with zero determinant");
-        }
+        InvertibleMatrix result(this->rows_ - 1, this->cols_ - 1);
 
-        InvertibleMatrix res = *this;
-        res = res.transpose();
-
-        std::cout << "Res\n";
-        for (size_t i = 0; i < this->rows_; i++)
-        {
-            for (size_t j = 0; j < this->cols_; j++)
-            {
-                std::cout << res.data_[i][j] << " ";
-            }
-            std::cout << "\n";
-        }
-
+        int r = 0;
         for (int i = 0; i < this->rows_; i++) {
+            if (i == row) {
+                continue;
+            }
+            int c = 0;
             for (int j = 0; j < this->cols_; j++) {
-                res.data_[i][j] = res.data_[i][j] / det;
+                if (j == col) {
+                    continue;
+                }
+                result.data_[r][c] = this->data_[i][j];
+                c++;
             }
+            r++;
         }
-        for (size_t i = 0; i < this->rows_; i++)
-        {
-            for (size_t j = 0; j < this->cols_; j++)
-            {
-                std::cout << res.data_[i][j] << " ";
-            }
-            std::cout << "\n";
-        }
+
+        return result;
     }
+
+    InvertibleMatrix& inverse() 
+    {
+        float det = this->determinant();
+        if (det == 0) {
+            throw std::runtime_error("Matrix is not invertible");
+        }
+
+        InvertibleMatrix *adj = new InvertibleMatrix(this->rows_, this->cols_);
+
+        for (int i = 0; i < this->rows_; i++) 
+        {
+            for (int j = 0; j < this->cols_; j++) 
+            {
+                float sign = ((i + j) % 2 == 0) ? 1 : -1;
+                adj->data_[j][i] = sign * this->minor(i, j).determinant();
+                adj->data_[j][i]*=(1 / det);
+            }
+        }
+        return *adj;
+        
+    }
+
+    
 };
 
 template <typename T>
@@ -486,27 +623,7 @@ int main()
         }
     }
 
-    Matrix<int> B(3,3,5);
-    Matrix<int> D(3,3);
-    Matrix<int> C(N,N,arr);
-    B = D;
-    B = D - C;
-    B = D * C;
-    std::cout << D;
 
-    float* arr3 = new float[N];
-    for (size_t i = 0; i < N; i++)
-    {
-        arr3[i] = 1;
-    }
-
-    double eps = 1e-8;
-    std::cout << C;
-    std::cout << C.powerIteration(arr3,eps,1000) << std::endl;
-
-    C = C.transpose();
-
-    std::cout << C;
 
     int a = 2;
 
@@ -519,20 +636,14 @@ int main()
         arr2[i] = new float[N];
         for (size_t j = 0; j < N; j++)
         {
-            arr2[i][j] = rand() % 20;
+            arr2[i][j] = rand() % 10;
         }
     }
     Matrix2D K(N, arr2);
 
-    std::cout << M << std::endl;
-    std::cout << M.determinant() << std::endl;
-
-
-    InvertibleMatrix I(N,arr2);
-    std::cout << I << std::endl;
-    I.invers();
-
-
+    InvertibleMatrix In(N, arr2);
+    std::cout << In << std::endl;
+    std::cout << In.inverse() << std::endl;
 
     return 0;
 }
